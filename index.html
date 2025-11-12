@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Escape Room – Computación (Con Mensaje Final)</title>
+
+<style>
+/* ====== Estilo general ====== */
+body {
+  background:#0b0b0b; color:#fff;
+  font-family:Arial, sans-serif;
+  padding:30px;
+  margin:0;
+}
+h1 { text-align:center; color:#ff0033; margin-bottom:10px; }
+.seccion { max-width:900px; margin:0 auto; padding:45px; }
+
+/* ====== Temporizador fijo arriba derecha ====== */
+/* ====== Temporizador fijo arriba derecha ====== */
+.timer-box{
+  position: fixed; 
+  top: 18px;
+  right: 18px;
+  display:inline-flex; align-items:center; gap:12px;
+  padding:10px 14px;
+  border:3px solid #ff0033; border-radius:10px; background:#111;
+  box-shadow:0 0 22px rgba(255,0,0,0.35);
+  z-index:9998;
+}
+#reloj{
+  font-size:20px; font-weight:900; letter-spacing:10px;
+  padding:4px 10px; border:2px solid #ff0033; border-radius:8px; background:#000;
+  color:#ffdddd;
+}
+.btn { background:#ff0033; color:#000; font-weight:700; border:none; cursor:pointer;
+  padding:6px 8px; border-radius:8px; font-size:13px; }
+.btn.secundario{ background:#222; color:#ff0033; border:2px solid #ff0033; }
+
+/* ====== Pruebas (cajas) ====== */
+.caja {
+    text-align: center;
+  background:#111;
+  padding:15px; border-left:5px solid #ff0033; border-radius:10px;
+  margin-bottom:20px; box-shadow:0 0 12px rgba(255,0,0,0.18);
+}
+.caja input {
+   display: block;
+  margin: 10px auto;
+}
+.caja button {
+  display: inline-block;
+  margin: 10px auto 0 auto;
+}
+
+
+/* ====== Tabla Squid Game ====== */
+.tabla-squid {
+  border-collapse: collapse;
+  margin: 10px auto 0 auto;
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(255,0,0,0.6);
+}
+.tabla-squid th {
+  background: #111;
+  color: #ff0033;
+  border: 3px solid #ff0033;
+  padding: 12px;
+}
+.tabla-squid td {
+  background: #000;
+  border: 3px solid #ff0033;
+  width: 56px;
+  height: 56px;
+  cursor: pointer;
+  transition: 0.15s;
+  user-select:none;
+}
+.tabla-squid td.correcta { background:#ff0033; color:#000; box-shadow: inset 0 0 12px #000; }
+.tabla-squid td.incorrecta { background:#330000; color:#ff0033; animation: errorFlash 0.4s; }
+@keyframes errorFlash { 0%{background:#ff0000} 100%{background:#330000} }
+
+#mensajeTabla { text-align:center; margin-top:12px; font-size:18px; font-weight:700; }
+.correcto { color:#00ff88; } .error { color:#ff0033; }
+
+/* ===== GUARDIA ANIMADO ===== */
+.guardia {
+  position: fixed;
+  bottom: -320px;
+  right: 18px;
+  width: 240px;
+  text-align: center;
+  transition: bottom 0.55s ease-out;
+  z-index: 9999;
+}
+.guardia img { width:100%; filter: drop-shadow(0 0 10px #ff0033); }
+.guardia.mostrar { bottom: 20px; }
+.texto-guardia {
+  background: rgba(0,0,0,0.8);
+  padding:8px; margin-top:8px;
+  border:2px solid #ff0033; border-radius:8px; font-weight:800;
+  color:#fff; box-shadow:0 0 10px #ff0033;
+}
+
+/* Luces rojas y alarma */
+.luces-rojas { animation: luces 0.5s infinite alternate; }
+@keyframes luces { 0%{ background:#300000 } 100%{ background:#1a0000 } }
+.tiempo-agotado { animation: alarma 0.8s infinite alternate; }
+@keyframes alarma { 0%{ box-shadow:0 0 25px red } 100%{ box-shadow:0 0 6px black } }
+
+/* Bloqueo visual */
+.bloqueada .tabla-squid td { cursor:not-allowed; filter:grayscale(0.7) brightness(0.6); }
+
+/* ===== OVERLAY DE ÉXITO ===== */
+#overlayExito {
+  position: fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background: rgba(0,0,0,0.75); z-index:10001;
+}
+#overlayExito .modal {
+  background: linear-gradient(180deg,#120000 0%, #160000 100%);
+  border:4px solid #ff0033; padding:28px; border-radius:12px; text-align:center;
+  box-shadow: 0 0 40px rgba(255,0,0,0.6);
+  width: min(720px, 92%);
+}
+#overlayExito h2 { color:#fff; margin:0 0 10px 0; font-size:28px; }
+#overlayExito p { color:#ffd; font-weight:700; margin:10px 0; }
+#overlayExito .pass { font-size:20px; letter-spacing:2px; color:#ffdd66; margin:12px 0; }
+#overlayExito .closeBtn {
+  background:#ff0033; color:#000; border:none; padding:10px 16px; border-radius:8px; font-weight:800; cursor:pointer;
+  margin-top:8px;
+}
+
+/* pequeño ajuste responsive */
+@media (max-width:600px){
+  .timer-box { right:10px; top:10px; }
+  .guadia { width:180px; }
+  #overlayExito .modal { padding:16px; }
+}
+</style>
+</head>
+<body>
+  <div class="seccion">
+    <h1>🔐 Escape Room — Aula de Computación</h1>
+
+    <!-- TEMPORIZADOR -->
+    <div class="timer-box" id="timerBox">
+      <div id="reloj">04:00</div>
+      <button class="btn" id="btnStart">Iniciar</button>
+      <button class="btn secundario" id="btnPause">Pausar</button>
+      <button class="btn secundario" id="btnReset">Reiniciar</button>
+      <div id="estadoTexto" style="color:#ffdddd;font-weight:800;">Listo</div>
+    </div>
+
+    <!-- PRUEBAS -->
+    <div style="max-width:900px;margin:auto;padding-top:60px;">
+      <div class="caja">
+        <h2>Prueba 1 — Palabras en negrita</h2>
+        <p>Tomen la primera letra de cada palabra en <b>negrita</b>:</p>
+        <p>En el laboratorio hay una <b>Computadora</b>, una <b>Lámpara</b>, una <b>Agenda</b>, un <b>Ventilador</b> y un <b>Escritorio</b>.</p>
+        <input id="p1" placeholder="Respuesta">
+        <button class="btn" onclick="validar1()">Validar</button>
+        <p id="msg1"></p>
+      </div>
+
+      <div class="caja">
+        <h2>Prueba 2 — Buscar “perro”</h2>
+        <p>Busquen las letras escondidas después de la palabra "perro".</p>
+        <p style="color:#bbb;">
+          El perroW corre.<br/>
+          El perroI duerme.<br/>
+          El perroF ladra.<br/>
+          El perroI mira.
+        </p>
+        <input id="p2" placeholder="Respuesta">
+        <button class="btn" onclick="validar2()">Validar</button>
+        <p id="msg2"></p>
+      </div>
+
+      <h2 style="text-align:center;margin-top:8px;">Prueba 3 — Tabla Interactiva</h2>
+      <p style="text-align:center;color:#bbb;margin-top:4px;">Selección correcta: <b>1A,2B,3D</b></p>
+
+      <table class="tabla-squid" id="tablaJuego">
+    <tr>
+      <th></th><th>A</th><th>B</th><th>C</th><th>D</th>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td data-coord="1A">R</td>
+      <td data-coord="1B">C</td>
+      <td data-coord="1C">O</td>
+      <td data-coord="1D">L</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td data-coord="2A">A</td>
+      <td data-coord="2B">E</td>
+      <td data-coord="2C">O</td>
+      <td data-coord="2D">S</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td data-coord="3A">P</td>
+      <td data-coord="3B">U</td>
+      <td data-coord="3C">E</td>
+      <td data-coord="3D">D</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td data-coord="4A">T</td>
+      <td data-coord="4B">A</td>
+      <td data-coord="4C">N</td>
+      <td data-coord="4D">O</td>
+    </tr>
+  </table>
+
+      <p id="mensajeTabla"></p>
+
+      <div class="caja" style="margin-top:18px;">
+        <h2>Prueba 4 — Pista oculta : Responde</h2>
+        <p style="color:#888;">¿En qué taller los estudiantes trabajan con computadoras, investigan en Internet, crean presentaciones y aplican herramientas digitales para resolver desafíos? </p>
+        <input id="p4" placeholder="Respuesta">
+        <button class="btn" onclick="validar4()">Validar</button>
+        <p id="msg4"></p>
+      </div>
+
+      <!-- <h2 style="text-align:center;">🔐 Contraseña Final (para anotar)</h2>
+      <p style="text-align:center;font-size:18px;color:#ffd;">CLAVE — WIFI — RED — SISTEMA</p> -->
+    </div>
+  </div>
+
+  <!-- SONIDOS -->
+  <audio id="sndError" src="https://www.myinstants.com/media/sounds/squid-game-red-light.mp3"></audio>
+  <audio id="sndCorrecto" src="https://assets.mixkit.co/active_storage/sfx/2006/2006-preview.mp3"></audio>
+  <audio id="sndAlarma" src="https://www.myinstants.com/media/sounds/alarm.mp3"></audio>
+
+  <!-- GUARDIA -->
+  <div id="guardia" class="guardia oculto">
+    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS0xXUYGGrYKH_8OciBtHGSLczs25FmHUxSBAGpfWrayXo_EOhAnF5HRpn1B-hqyiTfQJg&usqp=CAU" alt="Guardia"/>
+    <div class="texto-guardia" id="textoGuardia"></div>
+  </div>
+
+  <!-- OVERLAY EXITO -->
+  <div id="overlayExito">
+    <div class="modal">
+      <h2>✅ ¡ESCAPASTE DEL LABORATORIO DE COMPUTACIÓN!</h2>
+      <p>Excelente trabajo — completaron todas las pruebas.</p>
+      <p class="pass">Contraseña final:<br/><strong>LETRA: "U"</strong></p>
+      <!-- <p style="font-size:13px;color:#ffd;">(Sin espacios: CLAVEWIFREDSISTEMA)</p> -->
+      <button class="closeBtn" id="btnCerrarExito">Cerrar</button>
+    </div>
+  </div>
+
+<script>
+/* ====== TEMPORIZADOR ====== */
+const reloj = document.getElementById("reloj");
+const estadoTexto = document.getElementById("estadoTexto");
+const btnStart = document.getElementById("btnStart");
+const btnPause = document.getElementById("btnPause");
+const btnReset = document.getElementById("btnReset");
+const contenedor = document.body;
+const overlayExito = document.getElementById("overlayExito");
+
+const DURACION_INICIAL = 4 * 60; // 10 min
+let restante = DURACION_INICIAL;
+let intervalo = null;
+let bloqueado = false;
+
+function formatear(seg){
+  const m = Math.floor(seg/60).toString().padStart(2,"0");
+  const s = (seg%60).toString().padStart(2,"0");
+  return `${m}:${s}`;
+}
+function render(){ reloj.textContent = formatear(restante); }
+
+function bloquearJuego(){
+  bloqueado = true;
+  contenedor.classList.add("bloqueada");
+  estadoTexto.textContent = "Tiempo agotado";
+  sndAlarma.play();
+  document.getElementById("timerBox").classList.add("tiempo-agotado");
+  mostrarGuardia("Tiempo finalizado ⏳");
+}
+
+btnStart.onclick = ()=>{
+  if(intervalo||bloqueado) return;
+  estadoTexto.textContent="En curso";
+  intervalo=setInterval(()=>{
+    restante--; render();
+    if(restante<=0){
+      clearInterval(intervalo);
+      restante=0; render();
+      bloquearJuego();
+    }
+  },1000);
+};
+btnPause.onclick = ()=>{ clearInterval(intervalo); intervalo=null; estadoTexto.textContent="Pausado"; };
+btnReset.onclick = ()=>{
+  clearInterval(intervalo); intervalo=null; restante=DURACION_INICIAL; render();
+  estadoTexto.textContent="Listo"; bloqueado=false; contenedor.classList.remove("bloqueada");
+};
+
+/* ====== GUARDIA + SONIDOS ====== */
+const guardia = document.getElementById("guardia");
+const textoGuardia = document.getElementById("textoGuardia");
+const sndError = document.getElementById("sndError");
+const sndCorrecto = document.getElementById("sndCorrecto");
+const sndAlarma = document.getElementById("sndAlarma");
+
+function mostrarGuardia(mensaje){
+  textoGuardia.innerText = mensaje;
+  guardia.classList.remove("oculto");
+  guardia.classList.add("mostrar");
+  setTimeout(()=>{
+    guardia.classList.remove("mostrar");
+    setTimeout(()=>guardia.classList.add("oculto"),600);
+  },2800);
+}
+function falloTabla(){
+  try{ sndError.currentTime=0; sndError.play(); }catch(e){}
+  mostrarGuardia("Jugador eliminado ❌");
+  document.body.classList.add("luces-rojas");
+  setTimeout(()=>document.body.classList.remove("luces-rojas"),900);
+}
+function aciertoTabla(){
+  try{ sndCorrecto.currentTime=0; sndCorrecto.play(); }catch(e){}
+  mostrarGuardia("Bien hecho ✔️");
+}
+
+/* ====== ESTADO DE PRUEBAS (para detectar final) ====== */
+let p1Ok=false, p2Ok=false, p3Ok=false, p4Ok=false;
+
+function chequearFinal(){
+  if(p1Ok && p2Ok && p3Ok && p4Ok){
+    // mostrar overlay de exito, detener timer y efectos
+    clearInterval(intervalo); intervalo=null;
+    bloqueado=true;
+    contenedor.classList.remove("bloqueada");
+    estadoTexto.textContent = "¡Escapado!";
+    try{ sndCorrecto.currentTime=0; sndCorrecto.play(); }catch(e){}
+    mostrarGuardia("¡Escapaste! 🎉");
+    // mostrar overlay
+    overlayExito.style.display = "flex";
+  }
+}
+
+/* ====== PRUEBA 1 ====== */
+function validar1(){
+  const v = document.getElementById("p1").value.trim().toLowerCase();
+  const msg = document.getElementById("msg1");
+  if(v === "clave"){
+    msg.innerHTML = "✔️ Correcto";
+    p1Ok = true;
+    chequearFinal();
+  } else {
+    msg.innerHTML = "❌ Incorrecto";
+    p1Ok = false;
+  }
+}
+
+/* ====== PRUEBA 2 ====== */
+function validar2(){
+  const v = document.getElementById("p2").value.trim().toLowerCase();
+  const msg = document.getElementById("msg2");
+  if(v === "wifi"){
+    msg.innerHTML = "✔️ Correcto";
+    p2Ok = true;
+    chequearFinal();
+  } else {
+    msg.innerHTML = "❌ Incorrecto";
+    p2Ok = false;
+  }
+}
+
+/* ====== PRUEBA 3 ====== */
+const correctas=["1A","2B","3D"];
+let seleccionadas=[];
+
+function letraDe(coord){
+  const celda=document.querySelector(`td[data-coord="${coord}"]`);
+  return celda ? celda.textContent.trim() : "";
+}
+
+document.querySelectorAll(".tabla-squid td").forEach(celda=>{
+  celda.addEventListener("click", ()=>{
+    if(bloqueado) return;
+    const coord = celda.dataset.coord;
+    if(seleccionadas.includes(coord)) return;
+    if(correctas.includes(coord)){
+      celda.classList.add("correcta");
+      seleccionadas.push(coord);
+      if(seleccionadas.length===correctas.length){
+        document.getElementById("mensajeTabla").innerHTML = "✔️ <span class='correcto'>PALABRA: RED</span>";
+        p3Ok = true;
+        aciertoTabla();
+        chequearFinal();
+      }
+    } else {
+      celda.classList.add("incorrecta");
+      document.getElementById("mensajeTabla").innerHTML = "❌ <span class='error'>ELIMINADO</span>";
+      falloTabla();
+    }
+  });
+});
+
+/* ====== PRUEBA 4 ====== */
+function validar4(){
+  const v = document.getElementById("p4").value.trim().toLowerCase();
+  const msg = document.getElementById("msg4");
+  if(v === "computacion"){
+    msg.innerHTML = "✔️ Correcto";
+    p4Ok = true;
+    chequearFinal();
+  } else {
+    msg.innerHTML = "❌ Incorrecto";
+    p4Ok = false;
+  }
+}
+
+/* ====== Overlay cerrar ====== */
+document.getElementById("btnCerrarExito").onclick = ()=>{
+  overlayExito.style.display = "none";
+};
+
+/* Render inicial */
+render();
+</script>
+</body>
+</html>
